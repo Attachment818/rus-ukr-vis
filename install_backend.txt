@@ -1,0 +1,1 @@
+python -m pip install fastapi uvicorn python-dotenv pandas pdfplumber python-docx python-multipart pydantic

@@ -1,0 +1,45 @@
+# Local environment
+.env
+.env.local
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Logs
+*.log
+backend-dev.err.log
+backend-dev.out.log
+frontend/dev-server.err.log
+frontend/dev-server.out.log
+frontend/dev-start.log
+
+# Runtime data
+backend/app/data/uploads/
+backend/app/data/*.sqlite3
+backend/app/data/*.db
+backend/app/data/**/*.sqlite3
+backend/app/data/**/*.db
+
+# Frontend dependencies and build outputs
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-*/
+frontend/.vite/
+frontend/.npm-cache/
+.npm-cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Reference projects not required for this repository
+Agent-main/
+fuseAgent-main/
+graphrag-main/
+202300300363_test2_AI-Visualization/

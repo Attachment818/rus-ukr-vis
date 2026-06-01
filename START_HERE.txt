@@ -1,0 +1,44 @@
+环境准备（rus-ukr-vis conda 已激活）：
+1. MySQL：必须先启动 Windows 服务「MySQL80」（services.msc → MySQL80 → 启动）
+   库名 rus_ukr_analysis，账号见 .env（已建表即可）
+   若后端报 10061 / Can't connect，就是 MySQL 没启动，不是代码错误
+2. Neo4j Desktop：启动实例 rus-ukr-dbms（bolt://127.0.0.1:7687），密码与 .env 中 NEO4J_PASSWORD 一致
+3. 安装依赖：python -m pip install -r backend/requirements.txt
+
+后端启动（项目根目录）：
+  推荐演示/联调时先不要用 --reload，避免前端刷新时后端重载导致 CancelledError：
+  python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+  如果确实要热重载，请只监听后端 Python 目录，不要监听整个 test3：
+  python -m uvicorn app.main:app --reload --reload-dir backend\app --reload-dir app --host 127.0.0.1 --port 8000
+
+前端启动（必须在 frontend 目录，不要在项目根目录 npm run dev）：
+  cd frontend
+  npm install --cache .npm-cache
+  npm run dev:check
+  npm run dev
+  成功时应看到：VITE v5.x ready  →  http://127.0.0.1:5175/
+
+  若 npm run dev 秒退、终端无输出（全红 exit 1）：
+  1) npm run dev:ping   应打印 node-ok；若也秒退，说明 npm 调用的 node 异常
+  2) powershell -ExecutionPolicy Bypass -File frontend\start-dev.ps1
+     （推荐：conda 激活后在 frontend 目录运行，会写 dev-start.log）
+  3) 打开 frontend\dev-start.log 把内容发给维护者
+  4) netstat -ano | findstr :5173  占用则 taskkill /PID <pid> /F
+  5) 备用：npm run dev:raw
+
+数据导入：
+- 冲突 CSV（约 15 万条）：首次访问 /datasets/conflict 或 POST /datasets/conflict/reindex 写入 MySQL conflict_events
+- 全量同步 Neo4j：POST /datasets/conflict/sync-neo4j?full=true（约 15 万条）
+- 微博导入 MySQL：POST /datasets/weibo/reindex 或前端「导入微博 → MySQL」
+
+已实现功能要点：
+- 四模式问答：global / local / event_chain / evidence（Neo4j 子图 + MySQL 检索）
+- 年份/地区筛选、ECharts 时间线/地图/来源分布、视图推荐、查询历史
+- 文档图谱：上传解析后 POST /documents/{id}/extract-graph，写入 Neo4j IntelEntity
+
+存储分工：
+- MySQL：workspaces、documents、document_chunks、conflict_events、public_opinion_posts 等
+- Neo4j：文档知识图谱（IntelEntity）+ 可选 ConflictEvent 宏观节点
+
+健康检查：GET /health 返回 mysql、neo4j、conflict_events 数量

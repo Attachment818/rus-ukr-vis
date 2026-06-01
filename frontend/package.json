@@ -1,0 +1,30 @@
+{
+  "name": "rus-ukr-intel-visualization-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5175 --strictPort --clearScreen false",
+    "dev:node": "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5175 --strictPort --clearScreen false",
+    "dev:force": "vite --host 127.0.0.1 --port 5175 --strictPort --clearScreen false --force",
+    "dev:wrapped": "node scripts/dev.cjs",
+    "dev:check": "node scripts/check-dev.cjs",
+    "dev:ping": "node -e \"console.log('node-ok',process.version,process.execPath)\"",
+    "dev:raw": "node node_modules/vite/bin/vite.js --host 127.0.0.1",
+    "fix:deps": "npm install",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "echarts": "^5.5.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.3.4"
+  }
+}
