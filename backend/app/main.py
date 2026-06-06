@@ -12,6 +12,8 @@ from app.routers.documents import router as documents_router
 from app.routers.graph import router as graph_router
 from app.routers.health import router as health_router
 from app.routers.intelligence import router as intelligence_router
+from app.routers.dashboard import router as dashboard_router
+from app.routers.graph_api import router as graph_api_router
 from app.routers.llm import router as llm_router
 from app.routers.qa import router as qa_router
 from app.routers.query import router as query_router
@@ -107,5 +109,7 @@ app.include_router(documents_router)
 app.include_router(intelligence_router)
 app.include_router(graph_router)
 app.include_router(qa_router)
+app.include_router(dashboard_router)
+app.include_router(graph_api_router)
 app.include_router(query_router)
 app.include_router(llm_router)

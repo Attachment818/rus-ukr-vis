@@ -1,6 +1,8 @@
 import { ChangeEvent, ClipboardEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import './app.css';
 import { deleteJson, fetchJson, postEmpty, postFormData, postJson } from './lib/api';
+import MapDashboard from './components/MapDashboard';
+import D3GraphPanel from './components/D3GraphPanel';
 
 type DatasetSummary = { dataset: string; total_rows: number; columns: string[] };
 type CountResponse = { total: number };
@@ -412,7 +414,7 @@ type IntelligenceEntity = {
   entity_type: string;
   evidence_text?: string | null;
 };
-type ActiveView = 'home' | 'situation' | 'chain' | 'knowledge' | 'workspace' | 'qa';
+type ActiveView = 'home' | 'situation' | 'chain' | 'knowledge' | 'workspace' | 'qa' | 'sandbox';
 type QaRunState = 'idle' | 'running' | 'success' | 'error';
 type ViewRecommendation = { view_type: string; title: string; rationale: string; priority: number };
 type QueryHistoryItem = {
@@ -561,6 +563,7 @@ const VIEW_TABS: Array<{ id: ActiveView; label: string; short: string }> = [
   { id: 'knowledge', label: '关系网络', short: '网' },
   { id: 'workspace', label: '情报管理', short: '情' },
   { id: 'qa', label: '智能研判', short: '问' },
+  { id: 'sandbox', label: '地理沙盘', short: '图' },
 ];
 const CURRENT_CASE_STORAGE_KEY = 'rus-ukr-current-intelligence-case';
 const CASE_FILE_LIMIT = 5;
@@ -637,6 +640,18 @@ export default function App() {
   const [actorPairs, setActorPairs] = useState<ActorPairItem[]>([]);
   const [overview, setOverview] = useState<ConflictOverview | null>(null);
   const [chainDetail, setChainDetail] = useState<EventChainDetail | null>(null);
+  const focusEvent = useMemo(() => {
+    if (!anchorEventId) return null;
+    const anchor = chainDetail?.anchor;
+    if (anchor?.latitude && anchor?.longitude) {
+      return { lat: anchor.latitude, lng: anchor.longitude, id: anchor.event_id_cnty, title: anchor.location || anchor.admin1 || anchor.event_id_cnty };
+    }
+    const ev = events.find(e => e.event_id_cnty === anchorEventId);
+    if (ev?.latitude && ev?.longitude) {
+      return { lat: ev.latitude, lng: ev.longitude, id: ev.event_id_cnty, title: ev.location || ev.admin1 || ev.event_id_cnty };
+    }
+    return null;
+  }, [anchorEventId, chainDetail, events]);
   const [knowledgeGraph, setKnowledgeGraph] = useState<KnowledgeGraphResponse | null>(null);
   const [eventEvidence, setEventEvidence] = useState<EventEvidenceResponse | null>(null);
   const [deriveJob, setDeriveJob] = useState<KnowledgeDeriveJob | null>(null);
@@ -1476,6 +1491,15 @@ export default function App() {
       cancelled = true;
       window.clearTimeout(bootTimer);
     };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const view = (e as CustomEvent).detail;
+      if (view) setActiveView(view as ActiveView);
+    };
+    window.addEventListener('app-navigate', handler);
+    return () => window.removeEventListener('app-navigate', handler);
   }, []);
 
   useEffect(() => {
@@ -2940,6 +2964,7 @@ export default function App() {
   }
 
   return (
+    <>
     <div className={`app-frame${isSidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <aside className={`side-nav${isSidebarCollapsed ? ' is-collapsed' : ''}`} aria-label="主导航">
         <button
@@ -3282,9 +3307,11 @@ export default function App() {
 
           <section className="panel">
             <div className="panel-header">
-              <h2>空间热点分布</h2>
+              <h2>地理情报沙盘</h2>
             </div>
-            <div ref={mapRef} className="chart-box tall" />
+            <div style={{ height: "380px", borderRadius: 8, overflow: "hidden" }}>
+              <MapDashboard fullscreen={false} focusEvent={focusEvent} />
+            </div>
           </section>
 
           <section className="panel panel-span-2 event-chain-panel">
@@ -3394,106 +3421,14 @@ export default function App() {
           )}
 
           {activeView === 'knowledge' && (
-            <>
-          <div className="section-head panel-span-2" id="knowledge">
-            <h2>关系网络</h2>
-            <span>主体 · 地点 · 来源 · 证据</span>
-          </div>
-
-          <section className="panel panel-span-2 knowledge-panel">
-            <div className="panel-header">
-              <h2>行动主体关系网</h2>
-              <span>
-                {(knowledgeGraph?.nodes.length ?? 0).toLocaleString()} 节点 · {(knowledgeGraph?.edges.length ?? 0).toLocaleString()} 关系
-              </span>
-            </div>
-            <div className="knowledge-toolbar">
-              <p className="muted">
-                从公开事件中提取主体、地点、来源和事件类型，支持从全局网络切换到单个事件的证据关系。
-              </p>
-              <div>
-                <button type="button" className="btn-secondary" onClick={() => void loadKnowledgeGraph()}>
-                  全局网络
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  disabled={!anchorEventId}
-                  onClick={() => void loadKnowledgeGraph(anchorEventId)}
-                >
-                  事件关系
-                </button>
+            <div style={{ gridColumn: '1 / -1', height: 'calc(100vh - 68px)', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ flexShrink: 0, padding: '8px 20px', background: '#0f172a', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ margin: 0, fontSize: 16, color: '#e2e8f0' }}>关系网络 <span style={{ fontSize: 11, color: '#64748b', fontWeight: 400 }}>主体 · 地点 · 来源 · 事件 · D3 力导向</span></h2>
+              </div>
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <D3GraphPanel />
               </div>
             </div>
-            {deriveJob && (
-              <div className={`derive-progress ${deriveJob.status}`}>
-                <div>
-                  <strong>{deriveJob.message}</strong>
-                  <span>
-                    {deriveJob.status === 'running'
-                      ? `${deriveJob.processed_events.toLocaleString()} / ${deriveJob.total_events.toLocaleString()} 条事件`
-                      : deriveJob.status}
-                  </span>
-                </div>
-                <progress
-                  max={Math.max(deriveJob.total_events || 1, 1)}
-                  value={Math.min(deriveJob.processed_events, deriveJob.total_events || deriveJob.processed_events)}
-                />
-                <p>
-                  实体 {deriveJob.entities.toLocaleString()} · 链接 {deriveJob.event_entity_links.toLocaleString()} ·
-                  证据 {deriveJob.evidences.toLocaleString()} · 关系 {deriveJob.relations.toLocaleString()}
-                </p>
-              </div>
-            )}
-            {knowledgeGraph?.nodes.length ? (
-              <div ref={knowledgeGraphRef} className="chart-box graph-tall" />
-            ) : (
-              <div className="feed-card muted">
-                暂无结构化关系。完成关系层生成后，可查看主体、地点、来源和事件之间的关联。
-              </div>
-            )}
-          </section>
-
-          <section className="panel">
-            <div className="panel-header">
-              <h2>锚点事件实体</h2>
-              <span>{eventEvidence?.entities.length ?? 0} 个实体</span>
-            </div>
-            <div className="entity-chip-grid">
-              {(eventEvidence?.entities ?? []).slice(0, 36).map((entity) => (
-                <article key={`${entity.role_type}-${entity.id}`} className="entity-chip">
-                  <span>{entity.role_type}</span>
-                  <strong>{entity.name}</strong>
-                  <em>{entity.entity_type}</em>
-                </article>
-              ))}
-              {!eventEvidence?.entities.length && (
-                <div className="feed-card muted">选择事件并生成关系层后，这里会列出行动主体、地区、来源和事件类型实体。</div>
-              )}
-            </div>
-          </section>
-
-          <section className="panel">
-            <div className="panel-header">
-              <h2>事件证据原文</h2>
-              <span>{eventEvidence?.evidences.length ?? 0} evidence</span>
-            </div>
-            <div className="evidence-list">
-              {(eventEvidence?.evidences ?? []).map((item, index) => (
-                <article key={item.id} className="evidence-card">
-                  <div className="feed-topline">
-                    <strong>[{index + 1}] {item.source_label || '公开事件'}</strong>
-                    <span>{item.evidence_type}</span>
-                  </div>
-                  <p>{item.quote_text || '暂无原文摘录。'}</p>
-                </article>
-              ))}
-              {!eventEvidence?.evidences.length && (
-                <div className="feed-card muted">当前锚点事件还没有可展示的证据记录，或尚未生成关系层。</div>
-              )}
-            </div>
-          </section>
-            </>
           )}
 
           {activeView === 'workspace' && (
@@ -3834,5 +3769,7 @@ export default function App() {
         </>
       </div>
     </div>
+    {activeView === 'sandbox' && <MapDashboard />}
+    </>
   );
 }

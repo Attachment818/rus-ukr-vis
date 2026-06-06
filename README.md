@@ -114,7 +114,11 @@ React + ECharts 可视化界面与智能问答
 │   │   └── App.css           # 页面样式
 │   ├── package.json
 │   └── vite.config.ts
-├── database/                 # 数据库脚本
+├── database/                 # MySQL 与 Neo4j 数据库脚本
+│   ├── schema.sql            # MySQL 建表脚本
+│   └── neo4j_seed.cypher.zip # Neo4j 图数据库初始化脚本压缩包
+├── scripts/
+│   └── export_neo4j_seed.py  # 不依赖 APOC 的 Neo4j Cypher 导出工具
 ├── raw_data/                 # 示例材料
 ├── russia_ukraine_conflict.csv
 ├── RU_Dataset_cleaned.csv
@@ -196,7 +200,7 @@ cd ..
 
 ### 5. 准备数据库
 
-在 MySQL 中创建数据库：
+#### 5.1 MySQL
 
 ```sql
 CREATE DATABASE IF NOT EXISTS rus_ukr_analysis
@@ -211,6 +215,42 @@ mysql -u root -p rus_ukr_analysis < database/schema.sql
 ```
 
 后端启动时也会自动检查并创建运行所需的扩展表。
+
+#### 5.2 Neo4j
+
+使用 Neo4j Desktop 创建并启动一个本地 DBMS，默认连接信息如下：
+
+```env
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_neo4j_password
+```
+
+如果项目中已经包含 `database/neo4j_seed.cypher.zip`，先解压得到 `database/neo4j_seed.cypher`，再导入图数据库：
+
+```powershell
+Expand-Archive database\neo4j_seed.cypher.zip -DestinationPath database -Force
+```
+
+```powershell
+cypher-shell -a bolt://localhost:7687 -u neo4j -p your_neo4j_password -d neo4j -f database\neo4j_seed.cypher
+```
+
+如果 PowerShell 找不到 `cypher-shell`，可以在 Neo4j Desktop 中打开对应 DBMS 的 Terminal，或使用 Neo4j 安装目录下的 `bin\cypher-shell.bat`：
+
+```powershell
+.\bin\cypher-shell.bat -a bolt://localhost:7687 -u neo4j -p your_neo4j_password -d neo4j -f D:\DataVisualization\test3\database\neo4j_seed.cypher
+```
+
+导入后可以在 Neo4j Browser 中验证：
+
+```cypher
+MATCH (n) RETURN count(n);
+```
+
+```cypher
+MATCH ()-[r]->() RETURN count(r);
+```
 
 ### 6. 启动后端
 
@@ -366,6 +406,24 @@ npm run build
 python -m compileall backend
 ```
 
+导出 Neo4j 初始化脚本：
+
+```powershell
+python scripts\export_neo4j_seed.py --database neo4j --output database\neo4j_seed.cypher
+```
+
+`database/neo4j_seed.cypher` 可能较大，不直接提交到 GitHub。导出后建议压缩为 zip：
+
+```powershell
+Compress-Archive -Path database\neo4j_seed.cypher -DestinationPath database\neo4j_seed.cypher.zip -Force
+```
+
+如果希望导入时自动清空目标 Neo4j 数据库，可以导出带清空语句的版本：
+
+```powershell
+python scripts\export_neo4j_seed.py --database neo4j --output database\neo4j_seed.cypher --include-clear
+```
+
 ## GitHub 上传
 
 首次上传到空仓库：
@@ -374,6 +432,7 @@ python -m compileall backend
 cd D:\DataVisualization\test3
 git init
 git add .
+git add -f .env
 git commit -m "Initial commit"
 git branch -M main
 git remote add origin https://github.com/Attachment818/rus-ukr-vis.git
@@ -384,7 +443,16 @@ git push -u origin main
 
 ```powershell
 git add .
+git add -f .env
 git commit -m "Update project"
 git push
 ```
 
+如果导出了 Neo4j 初始化脚本，需要提交压缩包：
+
+```powershell
+Compress-Archive -Path database\neo4j_seed.cypher -DestinationPath database\neo4j_seed.cypher.zip -Force
+git add scripts/export_neo4j_seed.py database/neo4j_seed.cypher.zip
+git commit -m "Add Neo4j seed file"
+git push
+```

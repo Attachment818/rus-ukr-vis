@@ -22,6 +22,10 @@ backend/app/data/*.sqlite3
 backend/app/data/*.db
 backend/app/data/**/*.sqlite3
 backend/app/data/**/*.db
+database/neo4j_seed.cypher
+database/neo4j_*.json
+database/neo4j_summary.json
+rus_ukr_analysis*.sql
 
 # Frontend dependencies and build outputs
 node_modules/
